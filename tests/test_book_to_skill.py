@@ -1506,6 +1506,26 @@ class TestPdftotextEncoding:
         assert captured.get("errors") == "replace"
 
 
+class TestDoclingFailureVisibility:
+    """A missing Docling falls back silently; a broken one warns instead."""
+
+    def test_missing_docling_is_silent(self, monkeypatch, capsys):
+        monkeypatch.setattr(pdf_parser.importlib.util, "find_spec", lambda name: None)
+        assert pdf_parser.extract_with_docling("x.pdf") is None
+        assert capsys.readouterr().err == ""
+
+    def test_import_error_inside_convert_is_warned(self, monkeypatch, capsys):
+        document_converter = pytest.importorskip("docling.document_converter")
+
+        def broken_convert(self, *args, **kwargs):
+            raise ImportError("tokenizers>=0.22.0,<=0.23.0 is required")
+
+        monkeypatch.setattr(document_converter.DocumentConverter, "convert", broken_convert)
+        assert pdf_parser.extract_with_docling("x.pdf") is None
+        err = capsys.readouterr().err
+        assert "[warn] extract_with_docling failed: ImportError" in err
+
+
 class TestPdftotextCleanup:
     """clean_pdftotext strips repeated headers/footers/page numbers and dehyphenates."""
 

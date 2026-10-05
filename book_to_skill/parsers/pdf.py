@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 import re
 import shutil
@@ -96,6 +97,10 @@ def extract_with_pdfminer(pdf_path: str) -> str | None:
 
 def extract_with_docling(pdf_path: str) -> str | None:
     """Layout-aware extraction using Docling. Best for technical books with tables and code."""
+    # Only a missing Docling is a silent fallback. Once it is installed, any failure --
+    # including an ImportError raised by a broken dependency inside convert() -- is warned.
+    if importlib.util.find_spec("docling") is None:
+        return None
     try:
         from docling.document_converter import DocumentConverter
         from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -113,8 +118,6 @@ def extract_with_docling(pdf_path: str) -> str | None:
         )
         result = converter.convert(pdf_path)
         return result.document.export_to_markdown()
-    except ImportError:
-        return None
     except Exception as e:
         print(f"  [warn] extract_with_docling failed: {type(e).__name__}: {e}", file=sys.stderr)
         return None
